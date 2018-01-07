@@ -10,7 +10,7 @@ exemples
     var file = new DataFs("database.db")
     file.insert(1,"hello world")
     file.insert(2,"hello world!!!")
-    ile.loop(function(record ,id){
+    file.loop(function(record ,id){
          console.log(record,id)
     })
 
