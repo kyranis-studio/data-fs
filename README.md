@@ -6,7 +6,7 @@ create read update an delete binary record (database like file system)
 
 exemples
 
-    const {DataFs} = require("./index")
+    const {DataFs} = require("data-fs")
     var file = new DataFs("database.db")
     file.insert(1,"hello world")
     file.insert(2,"hello world!!!")
