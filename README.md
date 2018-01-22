@@ -16,6 +16,6 @@ exemples
 
     // console.log 
     // {id=1,value:"hello world"}
-    // {id=1,value:"hello world!!!"}
+    // {id=2,value:"hello world!!!"}
 [Documentaion](https://github.com/kyranis-studio/data-fs/wiki)
 
