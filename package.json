@@ -13,5 +13,7 @@
     "database"
   ],
   "author": "wael zekri",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+  }
 }

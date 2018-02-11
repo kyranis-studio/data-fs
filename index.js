@@ -30,13 +30,15 @@ exports.DataFs = class DataFs {
         var freePos = binary.getFreeSpace(freeSpace, binary.length(value))
         if (freePos) {
           fsMan.write(this.fileName, binary.convert(value), freePos[0])
-          this.index.set(id, [freePos[0], freePos[1]])
-          fsMan.truncate(this.fileName)
+          this.index.set(id, [freePos[0], binary.length(value)])
+          freePos[0]=freePos[0]+binary.length(value)
+          freePos[1]=freePos[1]-binary.length(value)
+          fsMan.truncate(this.fileName,this.index.get(0))
           fsMan.append(this.fileName, binary.convert(this.index))
         }
       }
       if (!this.index.has(id)) {
-        fsMan.truncate(this.fileName)
+        fsMan.truncate(this.fileName,this.index.get(0))
         var from = fsMan.fileSize(this.fileName)
         fsMan.append(this.fileName, binary.convert(value))
         var dataLength = fsMan.fileSize(this.fileName)
@@ -64,10 +66,15 @@ exports.DataFs = class DataFs {
       return
     }
     var freeSpace
-    fsMan.truncate(this.fileName)
+    
     var recordIndex = this.index.get(id)
     if (freeSpace = this.index.get(0)) {
       freeSpace.push([recordIndex[0], recordIndex[1]])
+      freeSpace.sort((a,b)=>{return a[0]-b[0]})
+      freeSpace = binary.margeSpace(freeSpace)
+      if(freeSpace){
+        this.index.set(0,freeSpace)
+      }
     } else {
       this.index.set(0, [
         [recordIndex[0], recordIndex[1]]
@@ -75,6 +82,7 @@ exports.DataFs = class DataFs {
     }
     this.index.delete(id)
     if (this.override) fsMan.write(this.fileName, Buffer.alloc(recordIndex[1], 0), recordIndex[0])
+    fsMan.truncate(this.fileName,this.index.get(0))
     fsMan.append(this.fileName, binary.convert(this.index))
   }
   update(id, value) {
@@ -143,5 +151,42 @@ exports.DataFs = class DataFs {
       }
     }
     return result;
+  }
+
+  fragmentationIndex(){
+   var freeSpaceArray =this.index.get(0)
+   var freeSpace = 0;
+   var fileSize = fsMan.fileSize(this.fileName)
+   freeSpaceArray.forEach(space => {
+    freeSpace = freeSpace + space[1]
+   });
+   var fragmentation = (freeSpace/fileSize)*100
+   return fragmentation.toFixed(2)
+  }
+
+  fragmentationGraph(){
+    var map = []
+    this.index.forEach((record,key)=>{
+      if(key!=0){
+        record.push(1)
+        map.push(record)
+        map.sort((a,b)=>{return a[0]-b[0]})
+      }else{
+        record.forEach(space=>{
+          space.push(0)
+          map.push(space)
+          map.sort((a,b)=>{return a[0]-b[0]})
+        })
+      }
+    })
+    var fragMap=""
+    map.forEach(e=>{
+      if(e[2]){
+        fragMap=fragMap+"-"
+      }else{
+        fragMap=fragMap+"."
+      }
+    })
+    console.log(fragMap)
   }
 }
