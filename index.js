@@ -164,7 +164,7 @@ exports.DataFs = class DataFs {
    return fragmentation.toFixed(2)
   }
 
-  fragmentationGraph(){
+  dataMap(){
     var map = []
     this.index.forEach((record,key)=>{
       if(key!=0){
@@ -179,14 +179,6 @@ exports.DataFs = class DataFs {
         })
       }
     })
-    var fragMap=""
-    map.forEach(e=>{
-      if(e[2]){
-        fragMap=fragMap+"-"
-      }else{
-        fragMap=fragMap+"."
-      }
-    })
-    console.log(fragMap)
+    return map
   }
 }
