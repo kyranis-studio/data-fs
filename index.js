@@ -125,15 +125,18 @@ exports.DataFs = class DataFs {
   loop(callback, options) {
     if (options && options.from)
       var { from } = options
-    else from = 1
+    else from = 0
     if (options && options.to)
       var { to } = options
+      if(to<0){
+        to = this.getLenght()+to
+      }
     else to = this.getLenght()
-    var index = 1
+    var index = 0
     var keys = this.index.keys()
     for (var key of keys) {
       if (key) {
-        if (index >= from && index <= to) {
+        if (index >= from && index < to) {
           callback(this.getRecord(key),key)
         }
         index++
@@ -157,9 +160,11 @@ exports.DataFs = class DataFs {
    var freeSpaceArray =this.index.get(0)
    var freeSpace = 0;
    var fileSize = fsMan.fileSize(this.fileName)
-   freeSpaceArray.forEach(space => {
-    freeSpace = freeSpace + space[1]
-   });
+   if(freeSpaceArray){
+     freeSpaceArray.forEach(space => {
+      freeSpace = freeSpace + space[1]
+    });
+   }
    var fragmentation = (freeSpace/fileSize)*100
    return fragmentation.toFixed(2)
   }
@@ -168,7 +173,7 @@ exports.DataFs = class DataFs {
     var map = []
     this.index.forEach((record,key)=>{
       if(key!=0){
-        record.push(1)
+        record.push(key)
         map.push(record)
         map.sort((a,b)=>{return a[0]-b[0]})
       }else{
@@ -179,6 +184,19 @@ exports.DataFs = class DataFs {
         })
       }
     })
-    return map
+    var margedMap=[]
+    margedMap.push(map[0])
+    for (let i = 1; i < map.length; i++) {
+      var last = margedMap.length-1
+      if(margedMap[last][2]!=0 && map[i][2] !=0){
+        margedMap[last][1]=map[i][1]+margedMap[last][1]
+        margedMap[last][2]=1
+      }else if(margedMap[last][2]==0 && map[i][2] ==0){
+        margedMap[last][1]=map[i][1]+margedMap[last][1]
+      }else{
+        margedMap.push(new Array(map[i][0],map[i][1],map[i][2]))
+      }
+    }
+    return {map,margedMap}
   }
 }
