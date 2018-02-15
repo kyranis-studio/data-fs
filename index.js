@@ -10,6 +10,8 @@ exports.DataFs = class DataFs {
   constructor(fineName) {
     this.fileName = fineName
     this.override = false
+    this.defragMethod=1
+    this.onErrorcallback
     if (fsMan.exist(this.fileName)) {
       this.index = fsMan.getIndex(this.fileName)
     } else {
@@ -18,11 +20,14 @@ exports.DataFs = class DataFs {
   }
   insert(id, value) {
     if (id == 0) {
-      console.log(`your not allowed to insert this id [ 0 ]`)
+      if(this.onErrorcallback)
+        this.onErrorcallback(`your not allowed to insert this id [ 0 ]`)
+     return `your not allowed to insert this id [ 0 ]`
     }
     if (this.index.has(id) && this.index.get(id)[0]) {
-      console.log(`this id [ ${id} ] already exist`)
-      return
+      if(this.onErrorcallback)
+        this.onErrorcallback(`this id [ ${id} ] already exist`)
+      return `this id [ ${id} ] already exist`
     }
     if (fsMan.exist(this.fileName)) {
       var freeSpace
@@ -55,15 +60,23 @@ exports.DataFs = class DataFs {
       this.index.set(id, [4, binary.length(value)])
       fsMan.append(this.fileName, binary.convert(this.index))
     }
+    if(this.defragMethod==1){
+      var {map}=this.dataMap()
+      fsMan.defrag(this.index,map,this.fileName)
+    }else if(this.defragMethod==2){
+      this.defrag()
+    }
   }
   delete(id) {
     if (id == 0) {
-      console.log(`your not allowed to remove this id  [ 0 ]`)
-      return
+      if(this.onErrorcallback)
+        this.onErrorcallback(`your not allowed to remove this id  [ 0 ]`)
+      return `your not allowed to remove this id  [ 0 ]`
     }
     if (!this.index.has(id)) {
-      console.log(`this id [ ${id} ] don't exist`)
-      return
+      if(this.onErrorcallback)
+        this.onErrorcallback(`this id [ ${id} ] don't exist`)
+      return `this id [ ${id} ] don't exist`
     }
     var freeSpace
     
@@ -84,15 +97,23 @@ exports.DataFs = class DataFs {
     if (this.override) fsMan.write(this.fileName, Buffer.alloc(recordIndex[1], 0), recordIndex[0])
     fsMan.truncate(this.fileName,this.index.get(0))
     fsMan.append(this.fileName, binary.convert(this.index))
+    if(this.defragMethod==1){
+      var {map}=this.dataMap()
+      fsMan.defrag(this.index,map,this.fileName)
+    }else if(this.defragMethod==2){
+      this.defrag()
+    }
   }
   update(id, value) {
     if (id == 0) {
-      console.log(`your not allowed to update this id  [ 0 ]`)
-      return
+      if(this.onErrorcallback)
+        this.onErrorcallback(`your not allowed to update this id  [ 0 ]`)
+      return `your not allowed to update this id  [ 0 ]`
     }
     if (!this.index.has(id)) {
-      console.log(`this id [ ${id} ] don't exist`)
-      return
+      if(this.onErrorcallback)
+        this.onErrorcallback(`this id [ ${id} ] don't exist`)
+      return `this id [ ${id} ] don't exist`
     } else {
       var recordIndex = this.index.get(id)
       if (recordIndex[1] == binary.length(value)) {
@@ -123,15 +144,19 @@ exports.DataFs = class DataFs {
     }
   }
   loop(callback, options) {
-    if (options && options.from)
+    if (options && options.from){
       var { from } = options
-    else from = 0
-    if (options && options.to)
+    }else{ 
+      from = 0
+    }
+    if (options && options.to){
       var { to } = options
       if(to<0){
         to = this.getLenght()+to
       }
-    else to = this.getLenght()
+    }else{
+      to = this.getLenght()
+    } 
     var index = 0
     var keys = this.index.keys()
     for (var key of keys) {
@@ -156,47 +181,40 @@ exports.DataFs = class DataFs {
     return result;
   }
 
-  fragmentationIndex(){
-   var freeSpaceArray =this.index.get(0)
-   var freeSpace = 0;
-   var fileSize = fsMan.fileSize(this.fileName)
-   if(freeSpaceArray){
-     freeSpaceArray.forEach(space => {
-      freeSpace = freeSpace + space[1]
-    });
-   }
-   var fragmentation = (freeSpace/fileSize)*100
-   return fragmentation.toFixed(2)
-  }
-
   dataMap(){
     var map = []
+    var freeSpace = 0
+    var fileSize = fsMan.fileSize(this.fileName)
     this.index.forEach((record,key)=>{
       if(key!=0){
-        record.push(key)
-        map.push(record)
+        map.push(new Array(record[0],record[1],key))
         map.sort((a,b)=>{return a[0]-b[0]})
       }else{
         record.forEach(space=>{
           space.push(0)
-          map.push(space)
+          map.push(new Array(space[0],space[1],0))
           map.sort((a,b)=>{return a[0]-b[0]})
+          freeSpace = freeSpace + space[1]
         })
       }
     })
-    var margedMap=[]
-    margedMap.push(map[0])
-    for (let i = 1; i < map.length; i++) {
-      var last = margedMap.length-1
-      if(margedMap[last][2]!=0 && map[i][2] !=0){
-        margedMap[last][1]=map[i][1]+margedMap[last][1]
-        margedMap[last][2]=1
-      }else if(margedMap[last][2]==0 && map[i][2] ==0){
-        margedMap[last][1]=map[i][1]+margedMap[last][1]
-      }else{
-        margedMap.push(new Array(map[i][0],map[i][1],map[i][2]))
-      }
-    }
-    return {map,margedMap}
+    var fragmentation = (freeSpace/fileSize)*100
+    fragmentation = fragmentation.toFixed(2)
+    return {map,fragIndex:fragmentation}
   }
+
+  defrag(count){
+    var {map}=this.dataMap()
+    while (fsMan.defrag(this.index,map,this.fileName)) {
+      var {map}=this.dataMap()
+    }
+  }
+  onError(callback){
+    this.onErrorcallback=callback
+  }
+}
+exports.defrag={
+  none:0,
+  lazy:1,
+  full:2
 }

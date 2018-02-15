@@ -15,5 +15,6 @@
   "author": "wael zekri",
   "license": "MIT",
   "dependencies": {
+    "lodash": "^4.17.5"
   }
 }
